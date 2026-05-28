@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "app/api/webhook/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/checkout/route.ts": {
+      "maxDuration": 15
+    },
+    "app/download/[token]/route.ts": {
+      "maxDuration": 15
+    }
+  }
+}
