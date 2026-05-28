@@ -58,7 +58,9 @@ export async function POST(req: Request) {
       productId: product.id,
       ...(trackedEmail ? { trackedEmail } : {}),
     },
-    success_url: `${env.siteUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
+    success_url: trackedEmail
+      ? buildElyosoftSuccessUrl(env.elyosoftSuccessUrl, trackedEmail)
+      : `${env.siteUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${env.siteUrl}/cancel`,
   });
 
@@ -70,4 +72,15 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({ url: session.url });
+}
+
+function buildElyosoftSuccessUrl(base: string, email: string): string {
+  try {
+    const url = new URL(base);
+    url.searchParams.set("rise_paid", "1");
+    url.searchParams.set("u", email);
+    return url.toString();
+  } catch {
+    return base;
+  }
 }

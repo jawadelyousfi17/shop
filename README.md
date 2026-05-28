@@ -121,13 +121,63 @@ npm run dev
 
 ---
 
-## Deployment
+## Deploy to Vercel
 
-1. Push to GitHub and import into Vercel.
-2. Set every env var from `.env.example` in Vercel project settings.
-3. Add a Stripe webhook endpoint at `https://<your-domain>/api/webhook` listening to `checkout.session.completed`; copy its signing secret to `STRIPE_WEBHOOK_SECRET`.
-4. Run `npx prisma migrate deploy` against the production DB (or wire it into the Vercel build command).
-5. Confirm the Supabase Storage bucket is **private** in production.
+### One-time setup
+
+1. **Push to GitHub.**
+   ```bash
+   git add .
+   git commit -m "Vercel ready"
+   git push
+   ```
+2. **Import** the repo at <https://vercel.com/new>. Framework auto-detects as Next.js.
+3. **Production database** — run migrations once against your production Neon DB from your laptop:
+   ```bash
+   DATABASE_URL="<prod>" DIRECT_URL="<prod-direct>" npx prisma migrate deploy
+   ```
+   On every later schema change repeat this (Vercel does not run migrations).
+4. **Environment variables** — Vercel Dashboard → Project → Settings → Environment Variables. Paste every key from `.env.example`. Set scope to **Production** (and optionally **Preview** with test keys).
+   - `NEXT_PUBLIC_SITE_URL` = `https://<your-vercel-domain>` (or your custom domain). No trailing slash.
+   - Stripe keys: use **live** for Production, **test** for Preview.
+   - `ADMIN_EMAIL` must match a confirmed Supabase Auth user.
+5. **Stripe webhook (live)** — Stripe Dashboard → Developers → Webhooks → Add endpoint:
+   - URL: `https://<your-domain>/api/webhook`
+   - Event: `checkout.session.completed`
+   - Copy the signing secret → paste into Vercel as `STRIPE_WEBHOOK_SECRET` for Production → **Redeploy**.
+6. **Supabase** — confirm the Storage bucket is **private** in prod (it's enforced via signed URLs anyway, but defense in depth).
+7. **Elyosoft webhook** — set `ELYOSOFT_WEBHOOK_URL` and `ELYOSOFT_WEBHOOK_SECRET` in Vercel. The matching secret on Elyosoft must be identical.
+
+### How the build works on Vercel
+
+- `package.json` → `"build": "prisma generate && next build"` — Prisma client is generated against the bundled binary `rhel-openssl-3.0.x` set in `prisma/schema.prisma`.
+- `"postinstall": "prisma generate"` — guarantees the client exists even if a deploy skips the build script.
+- `vercel.json` extends `maxDuration` on the webhook (30s), checkout, and download routes.
+
+### Vercel body-size limit (important if uploading large files)
+
+Server Action body limit is set to `100mb` in `next.config.ts`, **but Vercel enforces a hard 4.5MB request cap on serverless function payloads on the Hobby plan and 100MB+ on Pro**.
+
+If you ship on Hobby and need to upload digital files larger than 4.5MB:
+
+- Option A: upgrade to Pro.
+- Option B: switch the admin file upload to direct-to-Supabase using `createSignedUploadUrl` (browser PUTs straight to Supabase Storage; the Server Action only saves the path). Ask Claude to wire this if needed.
+
+### Triggering a redeploy after env changes
+
+Vercel does **not** auto-rebuild when env vars change. Click **Redeploy** on the latest deployment or push an empty commit.
+
+### Verify the deploy
+
+1. Visit `https://<domain>` → home loads.
+2. Visit `/admin/login` → log in with `ADMIN_EMAIL`.
+3. Create a product.
+4. Open `/products/<slug>?u=you@example.com`, buy with Stripe test card `4242 4242 4242 4242`.
+5. Stripe Dashboard → Webhooks → endpoint → confirm `200 OK` event delivery.
+6. Inbox → secure download link arrives.
+7. Elyosoft logs → `/upadte-user` returned `200`.
+
+If a step fails, check Vercel → Project → Logs (Functions tab) for the matching route.
 
 ---
 

@@ -23,4 +23,6 @@ export const env = {
   downloadMaxCount: Number(process.env.DOWNLOAD_MAX_COUNT ?? 5),
   elyosoftWebhookUrl: process.env.ELYOSOFT_WEBHOOK_URL ?? "",
   elyosoftWebhookSecret: process.env.ELYOSOFT_WEBHOOK_SECRET ?? "",
+  elyosoftSuccessUrl:
+    process.env.ELYOSOFT_SUCCESS_URL ?? "https://www.elyosoft.online/",
 };
