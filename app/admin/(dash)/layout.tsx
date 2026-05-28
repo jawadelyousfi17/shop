@@ -9,6 +9,7 @@ import {
   Moon,
 } from "lucide-react";
 import { ActiveNavLink } from "./active-nav-link";
+import { TestWebhookButton } from "./test-webhook-button";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +57,7 @@ export default async function AdminDashLayout({
         </nav>
 
         <div className="mt-auto space-y-3">
+          <TestWebhookButton />
           <div className="flex items-center justify-between rounded-2xl bg-[#f3f4ef] p-3">
             <div className="flex items-center gap-3 min-w-0">
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--color-ink)] text-sm font-semibold text-white">

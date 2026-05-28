@@ -8,6 +8,7 @@ import { requireAdmin } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
 import { sendProductEmail } from "@/lib/email";
+import { notifyElyosoft } from "@/lib/elyosoft";
 
 const ProductSchema = z.object({
   title: z.string().min(1).max(160),
@@ -167,6 +168,45 @@ export async function resendOrderEmail(orderId: string): Promise<ActionResult> {
     };
   }
   return { ok: true };
+}
+
+export async function testElyosoftWebhook(): Promise<
+  | { ok: true; status: number; url: string }
+  | { ok: false; error: string; status?: number }
+> {
+  await requireAdmin();
+
+  if (!env.elyosoftWebhookUrl || !env.elyosoftWebhookSecret) {
+    return {
+      ok: false,
+      error:
+        "ELYOSOFT_WEBHOOK_URL or ELYOSOFT_WEBHOOK_SECRET not set in environment",
+    };
+  }
+
+  try {
+    const res = await notifyElyosoft({
+      email: "blacko.tv18@gmail.com",
+      price: 100,
+      currency: "usd",
+      productId: "test_product",
+      productTitle: "Rise webhook test",
+      orderId: `test_${Date.now()}`,
+    });
+    if (res.ok) {
+      return { ok: true, status: res.status ?? 200, url: env.elyosoftWebhookUrl };
+    }
+    let msg = "Webhook returned non-2xx";
+    if ("error" in res && res.error) msg = res.error;
+    else if ("body" in res) msg = `HTTP ${res.status} — ${(res.body ?? "").slice(0, 200)}`;
+    return {
+      ok: false,
+      error: msg,
+      status: "status" in res ? res.status : undefined,
+    };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "unknown" };
+  }
 }
 
 async function uploadIfPresent(
